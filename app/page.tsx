@@ -12,7 +12,7 @@ const agentImages: any = {
 
 const agents = Object.keys(agentImages);
 
-// 🏆 WORKING RANK ICONS (FIXED)
+// 🏆 RANK ICONS
 const rankImages: any = {
   Iron: "https://static.wikia.nocookie.net/valorant/images/6/6e/Iron_3_Rank.png",
   Bronze: "https://static.wikia.nocookie.net/valorant/images/0/0c/Bronze_3_Rank.png",
@@ -38,13 +38,30 @@ const getRankFromKD = (kd: number) => {
   return "Radiant";
 };
 
+// ✨ ANIMATED GLOW
+const getRankGlow = (rank: string) => {
+  switch (rank) {
+    case "Radiant":
+      return "animate-pulse shadow-[0_0_40px_rgba(255,0,0,0.9)]";
+    case "Immortal":
+      return "shadow-[0_0_30px_rgba(180,0,255,0.8)]";
+    case "Ascendant":
+      return "shadow-[0_0_25px_rgba(0,255,200,0.7)]";
+    case "Diamond":
+      return "shadow-[0_0_20px_rgba(0,200,255,0.7)]";
+    case "Gold":
+      return "shadow-[0_0_15px_rgba(255,215,0,0.7)]";
+    default:
+      return "";
+  }
+};
+
 export default function Home() {
   const [players, setPlayers] = useState<any[]>([]);
+  const [selected, setSelected] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
-  const [selected, setSelected] = useState<any[]>([]);
 
-  // 💾 LOAD/SAVE
   useEffect(() => {
     const saved = localStorage.getItem("players");
     if (saved) setPlayers(JSON.parse(saved));
@@ -58,17 +75,11 @@ export default function Home() {
 
   const addPlayer = async () => {
     if (!name || !tag) return;
-    if (players.length >= 10) return alert("Max 10 players");
 
     const res = await fetch(`/api/player?name=${name}&tag=${tag}`);
     const json = await res.json();
 
     const kd = randomKD();
-    const rank = getRankFromKD(kd);
-    const agent = agents[Math.floor(Math.random() * agents.length)];
-
-    json.agent = agent;
-    json.rank = rank;
 
     json.stats = {
       kd,
@@ -76,13 +87,13 @@ export default function Home() {
       hs: Math.floor(Math.random() * 40),
     };
 
+    json.rank = getRankFromKD(kd);
+    json.agent = agents[Math.floor(Math.random() * agents.length)];
+
     setPlayers([...players, json]);
     setName("");
     setTag("");
   };
-
-  const bestKD = Math.max(...players.map(p => p.stats?.kd || 0));
-  const worstKD = Math.min(...players.map(p => p.stats?.kd || Infinity));
 
   const toggleSelect = (player: any) => {
     if (selected.includes(player)) {
@@ -96,150 +107,119 @@ export default function Home() {
     setPlayers(players.filter(pl => pl !== p));
   };
 
-  const row1 = players.filter((_, i) => i % 2 === 0);
-  const row2 = players.filter((_, i) => i % 2 === 1);
-
-  const renderCard = (p: any, i: number) => {
-    const kd = p.stats?.kd || 0;
-    const isBest = kd === bestKD;
-    const isWorst = kd === worstKD;
-
-    return (
-      <div
-        key={i}
-        onClick={() => toggleSelect(p)}
-        className={`relative w-72 h-[420px] cursor-pointer border ${
-          isBest
-            ? "border-green-400 shadow-[0_0_25px_rgba(0,255,0,0.6)]"
-            : isWorst
-            ? "border-red-400 shadow-[0_0_25px_rgba(255,0,0,0.6)]"
-            : "border-gray-700"
-        }`}
-      >
-        {/* ❌ REMOVE */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            removePlayer(p);
-          }}
-          className="absolute top-2 right-2 z-20 bg-red-600 px-2 rounded text-xs"
-        >
-          X
-        </button>
-
-        {/* 🏆 RANK */}
-        <img
-          src={rankImages[p.rank]}
-          className="absolute top-2 left-2 w-12 z-20"
-        />
-
-        {/* AGENT */}
-        <img
-          src={agentImages[p.agent]}
-          className="absolute inset-0 w-full h-full object-cover opacity-80"
-        />
-
-        <div className="absolute inset-0 bg-black/70"></div>
-
-        <div className="relative z-10 p-4 mt-auto">
-
-          <h2 className="text-sm font-bold">{p.name}</h2>
-          <p className="text-yellow-400">{p.rank}</p>
-
-          {/* 📊 KD BAR */}
-          <div className="mt-2">
-            <div className="flex justify-between text-xs">
-              <span>KD</span>
-              <span>{kd}</span>
-            </div>
-            <div className="bg-gray-700 h-2">
-              <div
-                className="bg-green-400 h-2"
-                style={{ width: `${Math.min(kd * 50, 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* 📊 WIN */}
-          <div className="mt-2">
-            <div className="flex justify-between text-xs">
-              <span>Win</span>
-              <span>{p.stats.winrate}%</span>
-            </div>
-            <div className="bg-gray-700 h-2">
-              <div
-                className="bg-blue-400 h-2"
-                style={{ width: `${p.stats.winrate}%` }}
-              />
-            </div>
-          </div>
-
-          {/* 📊 HS */}
-          <div className="mt-2">
-            <div className="flex justify-between text-xs">
-              <span>HS%</span>
-              <span>{p.stats.hs}%</span>
-            </div>
-            <div className="bg-gray-700 h-2">
-              <div
-                className="bg-purple-400 h-2"
-                style={{ width: `${p.stats.hs}%` }}
-              />
-            </div>
-          </div>
-
-        </div>
-      </div>
-    );
-  };
+  const bestKD = Math.max(...players.map(p => p.stats?.kd || 0));
+  const worstKD = Math.min(...players.map(p => p.stats?.kd || Infinity));
 
   return (
-    <main className="min-h-screen bg-[#0f1923] text-white flex flex-col items-center p-10">
+    <main className="min-h-screen bg-[#0f1923] text-white p-10">
 
-      <h1 className="text-5xl font-bold mb-10 text-red-500">
+      <h1 className="text-4xl text-center mb-8 text-red-500">
         VALORANT ANALYZER
       </h1>
 
       {/* INPUT */}
-      <div className="flex items-center gap-3 mb-10 bg-[#1f2731] p-4 rounded-xl border border-gray-700">
-
-        <input
-          placeholder="Player Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="p-3 px-4 bg-[#0f1923] border border-gray-600 rounded-lg"
-        />
-
-        <span className="text-gray-400 text-xl font-bold">#</span>
-
-        <input
-          placeholder="Tag"
-          value={tag}
-          onChange={(e) => setTag(e.target.value)}
-          className="p-3 px-4 bg-[#0f1923] border border-gray-600 rounded-lg w-24"
-        />
-
-        <button onClick={addPlayer} className="bg-red-600 px-6 py-3 rounded-lg">
-          Add
-        </button>
+      <div className="flex justify-center gap-3 mb-10">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+        <span>#</span>
+        <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tag" />
+        <button onClick={addPlayer} className="bg-red-600 px-4">Add</button>
       </div>
 
       {/* GRID */}
-      <div className="flex flex-wrap justify-center gap-6 mb-6">
-        {row1.map(renderCard)}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+
+        {players.map((p, i) => {
+          const kd = p.stats.kd;
+          const isStrongest = kd === bestKD;
+          const isWeakest = kd === worstKD;
+          const isSelected = selected.includes(p);
+
+          return (
+            <div
+              key={i}
+              onClick={() => toggleSelect(p)}
+              className={`relative h-[400px] cursor-pointer border border-gray-700 
+              ${getRankGlow(p.rank)}
+              ${isSelected ? "scale-105 border-blue-400" : ""}
+              transition`}
+            >
+
+              {/* LABELS */}
+              {isStrongest && (
+                <div className="absolute top-2 right-2 bg-green-500 px-2 text-xs z-20">
+                  STRONGEST
+                </div>
+              )}
+
+              {isWeakest && (
+                <div className="absolute top-2 right-2 bg-red-500 px-2 text-xs z-20">
+                  WEAKEST
+                </div>
+              )}
+
+              {/* REMOVE */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removePlayer(p);
+                }}
+                className="absolute bottom-2 right-2 bg-red-600 px-2 text-xs z-20"
+              >
+                X
+              </button>
+
+              {/* RANK */}
+              <img src={rankImages[p.rank]} className="absolute top-2 left-2 w-10 z-20" />
+
+              {/* AGENT */}
+              <img
+                src={agentImages[p.agent]}
+                className="absolute inset-0 w-full h-full object-cover opacity-70"
+              />
+
+              <div className="absolute inset-0 bg-black/70"></div>
+
+              {/* INFO */}
+              <div className="relative z-10 p-4 mt-auto">
+                <h2 className="font-bold">{p.name}</h2>
+                <p className="text-yellow-400">{p.rank}</p>
+
+                {/* STAT BARS */}
+                <div className="mt-2 text-xs">
+                  <div>KD {kd}</div>
+                  <div className="bg-gray-700 h-2">
+                    <div className="bg-green-400 h-2" style={{ width: `${kd * 50}%` }} />
+                  </div>
+
+                  <div className="mt-1">Win {p.stats.winrate}%</div>
+                  <div className="bg-gray-700 h-2">
+                    <div className="bg-blue-400 h-2" style={{ width: `${p.stats.winrate}%` }} />
+                  </div>
+
+                  <div className="mt-1">HS {p.stats.hs}%</div>
+                  <div className="bg-gray-700 h-2">
+                    <div className="bg-purple-400 h-2" style={{ width: `${p.stats.hs}%` }} />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          );
+        })}
       </div>
 
-      <div className="flex flex-wrap justify-center gap-6">
-        {row2.map(renderCard)}
-      </div>
-
-      {/* VS */}
+      {/* ⚔️ VS PANEL */}
       {selected.length === 2 && (
         <div className="mt-10 bg-[#1f2731] p-6 rounded text-center">
           <h2 className="text-xl mb-2">⚔️ VS</h2>
-          <p>{selected[0].name} vs {selected[1].name}</p>
 
-          <p className="text-lg mt-2 font-bold">
+          <div className="flex justify-around">
+            <div>{selected[0].name}</div>
+            <div>VS</div>
+            <div>{selected[1].name}</div>
+          </div>
+
+          <p className="mt-4 text-lg font-bold">
             🏆 Winner:{" "}
             {selected[0].stats.kd > selected[1].stats.kd
               ? selected[0].name
