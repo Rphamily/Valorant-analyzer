@@ -12,17 +12,17 @@ const agentImages: any = {
 
 const agents = Object.keys(agentImages);
 
-// 🏆 RANK ICONS
+// 🏆 WORKING RANK ICONS (FIXED)
 const rankImages: any = {
-  Iron: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/3/largeicon.png",
-  Bronze: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/6/largeicon.png",
-  Silver: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/9/largeicon.png",
-  Gold: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/12/largeicon.png",
-  Platinum: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/15/largeicon.png",
-  Diamond: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/18/largeicon.png",
-  Ascendant: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/21/largeicon.png",
-  Immortal: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/24/largeicon.png",
-  Radiant: "https://media.valorant-api.com/competitivetiers/564d8e28-4b71-1a2c-7c03-6486a4c6d0cb/27/largeicon.png",
+  Iron: "https://static.wikia.nocookie.net/valorant/images/6/6e/Iron_3_Rank.png",
+  Bronze: "https://static.wikia.nocookie.net/valorant/images/0/0c/Bronze_3_Rank.png",
+  Silver: "https://static.wikia.nocookie.net/valorant/images/4/49/Silver_3_Rank.png",
+  Gold: "https://static.wikia.nocookie.net/valorant/images/6/65/Gold_3_Rank.png",
+  Platinum: "https://static.wikia.nocookie.net/valorant/images/a/a7/Platinum_3_Rank.png",
+  Diamond: "https://static.wikia.nocookie.net/valorant/images/2/2b/Diamond_3_Rank.png",
+  Ascendant: "https://static.wikia.nocookie.net/valorant/images/3/3a/Ascendant_3_Rank.png",
+  Immortal: "https://static.wikia.nocookie.net/valorant/images/1/1f/Immortal_3_Rank.png",
+  Radiant: "https://static.wikia.nocookie.net/valorant/images/1/1e/Radiant_Rank.png",
 };
 
 // 🎯 KD → RANK
@@ -44,13 +44,12 @@ export default function Home() {
   const [tag, setTag] = useState("");
   const [selected, setSelected] = useState<any[]>([]);
 
-  // 💾 LOAD SAVED
+  // 💾 LOAD/SAVE
   useEffect(() => {
     const saved = localStorage.getItem("players");
     if (saved) setPlayers(JSON.parse(saved));
   }, []);
 
-  // 💾 SAVE
   useEffect(() => {
     localStorage.setItem("players", JSON.stringify(players));
   }, [players]);
@@ -70,6 +69,7 @@ export default function Home() {
 
     json.agent = agent;
     json.rank = rank;
+
     json.stats = {
       kd,
       winrate: Math.floor(kd * 40 + Math.random() * 20),
@@ -92,11 +92,8 @@ export default function Home() {
     }
   };
 
-  const getGlow = (rank: string) => {
-    if (rank === "Radiant") return "animate-pulse shadow-[0_0_30px_red]";
-    if (rank === "Immortal") return "shadow-[0_0_20px_purple]";
-    if (rank === "Diamond") return "shadow-[0_0_15px_cyan]";
-    return "";
+  const removePlayer = (p: any) => {
+    setPlayers(players.filter(pl => pl !== p));
   };
 
   const row1 = players.filter((_, i) => i % 2 === 0);
@@ -113,14 +110,30 @@ export default function Home() {
         onClick={() => toggleSelect(p)}
         className={`relative w-72 h-[420px] cursor-pointer border ${
           isBest
-            ? "border-green-400"
+            ? "border-green-400 shadow-[0_0_25px_rgba(0,255,0,0.6)]"
             : isWorst
-            ? "border-red-400"
+            ? "border-red-400 shadow-[0_0_25px_rgba(255,0,0,0.6)]"
             : "border-gray-700"
-        } ${getGlow(p.rank)}`}
+        }`}
       >
-        <img src={rankImages[p.rank]} className="absolute top-2 left-2 w-12 z-20" />
+        {/* ❌ REMOVE */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            removePlayer(p);
+          }}
+          className="absolute top-2 right-2 z-20 bg-red-600 px-2 rounded text-xs"
+        >
+          X
+        </button>
 
+        {/* 🏆 RANK */}
+        <img
+          src={rankImages[p.rank]}
+          className="absolute top-2 left-2 w-12 z-20"
+        />
+
+        {/* AGENT */}
         <img
           src={agentImages[p.agent]}
           className="absolute inset-0 w-full h-full object-cover opacity-80"
@@ -129,12 +142,52 @@ export default function Home() {
         <div className="absolute inset-0 bg-black/70"></div>
 
         <div className="relative z-10 p-4 mt-auto">
-          <h2>{p.name}</h2>
+
+          <h2 className="text-sm font-bold">{p.name}</h2>
           <p className="text-yellow-400">{p.rank}</p>
 
-          <p>KD: {kd}</p>
-          <p>Win: {p.stats?.winrate}%</p>
-          <p>HS: {p.stats?.hs}%</p>
+          {/* 📊 KD BAR */}
+          <div className="mt-2">
+            <div className="flex justify-between text-xs">
+              <span>KD</span>
+              <span>{kd}</span>
+            </div>
+            <div className="bg-gray-700 h-2">
+              <div
+                className="bg-green-400 h-2"
+                style={{ width: `${Math.min(kd * 50, 100)}%` }}
+              />
+            </div>
+          </div>
+
+          {/* 📊 WIN */}
+          <div className="mt-2">
+            <div className="flex justify-between text-xs">
+              <span>Win</span>
+              <span>{p.stats.winrate}%</span>
+            </div>
+            <div className="bg-gray-700 h-2">
+              <div
+                className="bg-blue-400 h-2"
+                style={{ width: `${p.stats.winrate}%` }}
+              />
+            </div>
+          </div>
+
+          {/* 📊 HS */}
+          <div className="mt-2">
+            <div className="flex justify-between text-xs">
+              <span>HS%</span>
+              <span>{p.stats.hs}%</span>
+            </div>
+            <div className="bg-gray-700 h-2">
+              <div
+                className="bg-purple-400 h-2"
+                style={{ width: `${p.stats.hs}%` }}
+              />
+            </div>
+          </div>
+
         </div>
       </div>
     );
@@ -148,24 +201,46 @@ export default function Home() {
       </h1>
 
       {/* INPUT */}
-      <div className="flex gap-2 mb-10">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
-        <span>#</span>
-        <input value={tag} onChange={(e) => setTag(e.target.value)} placeholder="Tag" />
-        <button onClick={addPlayer}>Add</button>
+      <div className="flex items-center gap-3 mb-10 bg-[#1f2731] p-4 rounded-xl border border-gray-700">
+
+        <input
+          placeholder="Player Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="p-3 px-4 bg-[#0f1923] border border-gray-600 rounded-lg"
+        />
+
+        <span className="text-gray-400 text-xl font-bold">#</span>
+
+        <input
+          placeholder="Tag"
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+          className="p-3 px-4 bg-[#0f1923] border border-gray-600 rounded-lg w-24"
+        />
+
+        <button onClick={addPlayer} className="bg-red-600 px-6 py-3 rounded-lg">
+          Add
+        </button>
       </div>
 
       {/* GRID */}
-      <div className="flex gap-6 mb-6">{row1.map(renderCard)}</div>
-      <div className="flex gap-6">{row2.map(renderCard)}</div>
+      <div className="flex flex-wrap justify-center gap-6 mb-6">
+        {row1.map(renderCard)}
+      </div>
 
-      {/* ⚔️ VS MODE */}
+      <div className="flex flex-wrap justify-center gap-6">
+        {row2.map(renderCard)}
+      </div>
+
+      {/* VS */}
       {selected.length === 2 && (
         <div className="mt-10 bg-[#1f2731] p-6 rounded text-center">
-          <h2 className="text-xl mb-2">VS Comparison</h2>
+          <h2 className="text-xl mb-2">⚔️ VS</h2>
           <p>{selected[0].name} vs {selected[1].name}</p>
-          <p>
-            Winner:{" "}
+
+          <p className="text-lg mt-2 font-bold">
+            🏆 Winner:{" "}
             {selected[0].stats.kd > selected[1].stats.kd
               ? selected[0].name
               : selected[1].name}
