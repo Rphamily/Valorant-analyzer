@@ -74,25 +74,30 @@ export default function Home() {
   const randomKD = () => Number((Math.random() * 1.5 + 0.5).toFixed(2));
 
   const addPlayer = async () => {
-    if (!name || !tag) return;
+  if (!name || !tag) return;
 
-    const res = await fetch(`/api/player?name=${name}&tag=${tag}`);
-    const json = await res.json();
+  const res = await fetch(`/api/player?name=${name}&tag=${tag}`);
+  const json = await res.json();
 
-    const kd = randomKD();
+  if (json.error) {
+    alert("Player not found");
+    return;
+  }
 
-    json.stats = {
-      kd,
-      winrate: Math.floor(kd * 40 + Math.random() * 20),
-      hs: Math.floor(Math.random() * 40),
-    };
+  // still generate stats (until we get full match data)
+  const kd = Number((Math.random() * 1.5 + 0.5).toFixed(2));
 
-    json.rank = getRankFromKD(kd);
-    json.agent = agents[Math.floor(Math.random() * agents.length)];
+  json.stats = {
+    kd,
+    winrate: Math.floor(kd * 40 + Math.random() * 20),
+    hs: Math.floor(Math.random() * 40),
+  };
 
-    setPlayers([...players, json]);
-    setName("");
-    setTag("");
+  json.agent = agents[Math.floor(Math.random() * agents.length)];
+
+  setPlayers([...players, json]);
+  setName("");
+  setTag("");
   };
 
   const toggleSelect = (player: any) => {
