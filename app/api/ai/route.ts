@@ -1,48 +1,40 @@
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY!,
+});
+
 export async function POST(req: Request) {
+  const body = await req.json();
+
   try {
-    // 🔍 DEBUG: check if API key exists
-    console.log("ENV KEY:", process.env.OPENAI_API_KEY);
-
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({
-        answer: "❌ API key not found. Check .env.local",
-      });
-    }
-
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    const body = await req.json();
-    const { question, stats } = body;
-
     const response = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content:
-            "You are a professional Valorant coach. Give short, helpful advice.",
+          content: `
+Return ONLY JSON:
+
+{
+  "action": "add_player",
+  "players": [{ "name": "", "tag": "" }]
+}
+`,
         },
         {
           role: "user",
-          content: `Stats: ${JSON.stringify(stats)} \n Question: ${question}`,
+          content: body.message,
         },
       ],
     });
 
-    return NextResponse.json({
-      answer: response.choices[0].message.content,
-    });
+    const text = response.choices[0].message.content || "{}";
 
-  } catch (error: any) {
-    console.error("🔥 FULL ERROR:", error);
-
-    return NextResponse.json({
-      answer: "❌ AI failed — check terminal",
-    });
+    return NextResponse.json(JSON.parse(text));
+  } catch (err) {
+    console.error(err);
+    return NextResponse.json({ error: "AI failed" });
   }
 }

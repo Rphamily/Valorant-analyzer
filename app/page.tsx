@@ -49,6 +49,7 @@ export default function Home() {
   const [selected, setSelected] = useState<any[]>([]);
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
+  const [aiInput, setAiInput] = useState("");
 
   // 💾 LOAD
   useEffect(() => {
@@ -63,30 +64,77 @@ export default function Home() {
 
   const randomKD = () => Number((Math.random() * 1.5 + 0.5).toFixed(2));
 
+  // 🔹 ADD PLAYER (manual)
   const addPlayer = async () => {
     if (!name || !tag) return;
 
     const res = await fetch(`/api/player?name=${name}&tag=${tag}`);
     const json = await res.json();
 
-    if (json.error) {
-      alert("Player not found");
-      return;
-    }
+    if (json.error) return alert("Player not found");
 
     const kd = randomKD();
 
-    json.stats = {
-      kd,
-      winrate: Math.floor(kd * 40 + Math.random() * 20),
-      hs: Math.floor(Math.random() * 40),
+    const newPlayer = {
+      ...json,
+      stats: {
+        kd,
+        winrate: Math.floor(kd * 40 + Math.random() * 20),
+        hs: Math.floor(Math.random() * 40),
+      },
+      agent: agents[Math.floor(Math.random() * agents.length)],
     };
 
-    json.agent = agents[Math.floor(Math.random() * agents.length)];
-
-    setPlayers([...players, json]);
+    setPlayers((prev) => [...prev, newPlayer]);
     setName("");
     setTag("");
+  };
+
+  // 🔹 ADD PLAYER (AI)
+  const addPlayerFromAI = async (name: string, tag: string) => {
+    const res = await fetch(`/api/player?name=${name}&tag=${tag}`);
+    const json = await res.json();
+
+    if (json.error) return;
+
+    const kd = randomKD();
+
+    const newPlayer = {
+      ...json,
+      stats: {
+        kd,
+        winrate: Math.floor(kd * 40 + Math.random() * 20),
+        hs: Math.floor(Math.random() * 40),
+      },
+      agent: agents[Math.floor(Math.random() * agents.length)],
+    };
+
+    setPlayers((prev) => [...prev, newPlayer]);
+  };
+
+  // 🤖 AI HANDLER
+  const handleAI = async () => {
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        body: JSON.stringify({ message: aiInput }),
+      });
+
+      const data = await res.json();
+
+      console.log("AI:", data);
+
+      if (!data?.players) return alert("AI failed");
+
+      for (const p of data.players) {
+        await addPlayerFromAI(p.name, p.tag);
+      }
+
+      setAiInput("");
+
+    } catch {
+      alert("AI error");
+    }
   };
 
   const toggleSelect = (player: any) => {
@@ -108,34 +156,28 @@ export default function Home() {
     <main className="min-h-screen bg-[#0f1923] text-white p-10">
 
       <h1 className="text-4xl text-center mb-8 text-red-500 font-bold">
-        VALORANT ANALYZER
+        STATLY AI
       </h1>
 
-      {/* INPUT */}
-      <div className="flex justify-center items-center gap-3 mb-10 bg-[#1f2731] p-4 rounded-xl border border-gray-700 w-fit mx-auto">
-
+      {/* 🤖 AI INPUT */}
+      <div className="flex justify-center gap-3 mb-6">
         <input
-          placeholder="Player Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="p-3 bg-[#0f1923] border border-gray-600 rounded"
+          placeholder="Ask AI (add TenZ NA1)"
+          value={aiInput}
+          onChange={(e) => setAiInput(e.target.value)}
+          className="p-3 bg-[#0f1923] border rounded w-80"
         />
-
-        <span className="text-xl">#</span>
-
-        <input
-          placeholder="Tag"
-          value={tag}
-          onChange={(e) => setTag(e.target.value.toUpperCase())}
-          className="p-3 bg-[#0f1923] border border-gray-600 rounded w-24"
-        />
-
-        <button
-          onClick={addPlayer}
-          className="bg-red-600 px-5 py-2 rounded"
-        >
-          Add
+        <button onClick={handleAI} className="bg-purple-600 px-5 rounded">
+          Ask AI
         </button>
+      </div>
+
+      {/* MANUAL INPUT */}
+      <div className="flex justify-center gap-3 mb-10">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" />
+        <span>#</span>
+        <input value={tag} onChange={(e) => setTag(e.target.value.toUpperCase())} placeholder="Tag" />
+        <button onClick={addPlayer} className="bg-red-600 px-4">Add</button>
       </div>
 
       {/* GRID */}
@@ -151,74 +193,30 @@ export default function Home() {
             <div
               key={i}
               onClick={() => toggleSelect(p)}
-              className={`relative h-[420px] cursor-pointer border border-gray-700 
+              className={`relative h-[420px] border cursor-pointer 
               ${getRankGlow(p.rank)}
-              ${isSelected ? "scale-105 border-blue-400" : ""}
-              transition`}
+              ${isSelected ? "scale-105 border-blue-400" : "border-gray-700"}`}
             >
 
-              {/* LABELS */}
-              {isStrongest && (
-                <div className="absolute top-2 right-2 bg-green-500 px-2 text-xs z-20">
-                  STRONGEST
-                </div>
-              )}
+              {isStrongest && <div className="absolute top-2 right-2 bg-green-500 px-2 text-xs">STRONGEST</div>}
+              {isWeakest && <div className="absolute top-2 right-2 bg-red-500 px-2 text-xs">WEAKEST</div>}
 
-              {isWeakest && (
-                <div className="absolute top-2 right-2 bg-red-500 px-2 text-xs z-20">
-                  WEAKEST
-                </div>
-              )}
-
-              {/* REMOVE */}
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removePlayer(p);
-                }}
-                className="absolute bottom-2 right-2 bg-red-600 px-2 text-xs z-20"
-              >
-                X
-              </button>
+                onClick={(e) => { e.stopPropagation(); removePlayer(p); }}
+                className="absolute bottom-2 right-2 bg-red-600 px-2 text-xs"
+              >X</button>
 
-              {/* RANK */}
-              <img
-                src={rankImages[p.rank]}
-                className="absolute top-2 left-2 w-10 z-20"
-              />
+              <img src={rankImages[p.rank]} className="absolute top-2 left-2 w-10" />
 
-              {/* AGENT */}
-              <img
-                src={agentImages[p.agent]}
-                className="absolute inset-0 w-full h-full object-cover opacity-70"
-              />
-
+              <img src={agentImages[p.agent]} className="absolute inset-0 w-full h-full object-cover opacity-70" />
               <div className="absolute inset-0 bg-black/70"></div>
 
-              {/* INFO */}
               <div className="relative z-10 p-4 mt-auto">
-
-                <h2 className="font-bold">{p.name}</h2>
+                <h2>{p.name}</h2>
                 <p className="text-yellow-400">{p.rank} ({p.region})</p>
-
-                {/* KD */}
-                <div className="mt-2 text-xs">
-                  <div>KD {kd}</div>
-                  <div className="bg-gray-700 h-2">
-                    <div className="bg-green-400 h-2" style={{ width: `${kd * 50}%` }} />
-                  </div>
-
-                  <div className="mt-1">Win {p.stats.winrate}%</div>
-                  <div className="bg-gray-700 h-2">
-                    <div className="bg-blue-400 h-2" style={{ width: `${p.stats.winrate}%` }} />
-                  </div>
-
-                  <div className="mt-1">HS {p.stats.hs}%</div>
-                  <div className="bg-gray-700 h-2">
-                    <div className="bg-purple-400 h-2" style={{ width: `${p.stats.hs}%` }} />
-                  </div>
-                </div>
-
+                <p>KD: {kd}</p>
+                <p>Win: {p.stats.winrate}%</p>
+                <p>HS: {p.stats.hs}%</p>
               </div>
 
             </div>
@@ -226,25 +224,17 @@ export default function Home() {
         })}
       </div>
 
-      {/* VS PANEL */}
+      {/* VS */}
       {selected.length === 2 && (
-        <div className="mt-10 bg-[#1f2731] p-6 rounded text-center">
-
-          <h2 className="text-xl mb-2">⚔️ VS</h2>
-
-          <div className="flex justify-around">
-            <div>{selected[0].name}</div>
-            <div>VS</div>
-            <div>{selected[1].name}</div>
-          </div>
-
-          <p className="mt-4 text-lg font-bold">
+        <div className="mt-10 bg-[#1f2731] p-6 text-center">
+          <h2>⚔️ VS</h2>
+          <p>{selected[0].name} vs {selected[1].name}</p>
+          <p>
             🏆 Winner:{" "}
             {selected[0].stats.kd > selected[1].stats.kd
               ? selected[0].name
               : selected[1].name}
           </p>
-
         </div>
       )}
 

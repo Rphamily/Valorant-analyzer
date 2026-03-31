@@ -11,12 +11,7 @@ export async function GET(req: Request) {
   for (const region of regions) {
     try {
       const res = await fetch(
-        `https://api.henrikdev.xyz/valorant/v1/mmr/${region}/${name}/${tag}`,
-        {
-          headers: {
-            Authorization: process.env.HENRIK_API_KEY || "",
-          },
-        }
+        `https://api.henrikdev.xyz/valorant/v1/mmr/${region}/${name}/${tag}`
       );
 
       const data = await res.json();
@@ -29,7 +24,9 @@ export async function GET(req: Request) {
           region: region.toUpperCase(),
         });
       }
-    } catch {}
+    } catch (err) {
+      console.log("Error:", err);
+    }
   }
 
   return NextResponse.json({ error: "Player not found" });
